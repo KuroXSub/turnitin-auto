@@ -21,7 +21,7 @@ class StatusController extends Controller
         if ($document->status === 'checked' && $document->resolved_file_path) {
             
             try {
-                $resultUrl = Storage::disk('r2')->temporaryUrl(
+                $resultUrl = Storage::disk('s3')->temporaryUrl(
                     $document->resolved_file_path,
                     now()->addHour()
                 );
