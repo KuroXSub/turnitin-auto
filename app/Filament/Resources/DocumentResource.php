@@ -51,23 +51,27 @@ class DocumentResource extends Resource
                             ->disabled()
                             ->columnSpanFull(),
                         
-                        // Tombol untuk admin mendownload file asli
                         Placeholder::make('download_original')
                             ->label('Unduh File Asli')
-                            ->content(function (?Document $record): string {
+                            ->content(function (?Document $record): HtmlString {
                                 if (!$record || !$record->file_path) {
-                                    // Ini akan tampil di halaman 'Create' (karena $record null)
-                                    return 'File belum diunggah.'; 
+                                    return new HtmlString('<span class="text-sm text-gray-500">File belum diunggah.</span>');
                                 }
-                                $url = Storage::disk('r2')->temporaryUrl(
+
+                                $url = Storage::disk('s3')->temporaryUrl(
                                     $record->file_path,
                                     now()->addMinutes(15)
                                 );
-                                // Ini akan tampil di halaman 'Edit'
-                                return "<a href='{$url}' target='_blank' class='filament-button filament-button-size-sm inline-flex items-center justify-center py-1 gap-1 font-medium rounded-lg border transition-colors outline-none focus:ring-offset-2 focus:ring-2 focus:ring-inset min-h-[2rem] px-3 text-sm text-gray-800 bg-white border-gray-300 hover:bg-gray-50 focus:ring-primary-600 focus:text-primary-600 focus:bg-primary-50 focus:border-primary-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:focus:text-primary-400 dark:focus:border-primary-400 dark:focus:bg-gray-800'>
-                                    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' class='w-5 h-5'><path d='M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z' /><path d='M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z' /></svg>
-                                    Unduh File Asli
-                                </a>";
+
+                                return new HtmlString("
+                                    <a href='{$url}' target='_blank' class='filament-button filament-button-size-sm inline-flex items-center justify-center py-1 gap-1 font-medium rounded-lg border transition-colors outline-none focus:ring-offset-2 focus:ring-2 focus:ring-inset min-h-[2rem] px-3 text-sm text-gray-800 bg-white border-gray-300 hover:bg-gray-50 focus:ring-primary-600 focus:text-primary-600 focus:bg-primary-50 focus:border-primary-600 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:focus:text-primary-400 dark:focus:border-primary-400 dark:focus:bg-gray-800'>
+                                        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor' class='w-5 h-5'>
+                                            <path d='M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z' />
+                                            <path d='M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z' />
+                                        </svg>
+                                        Unduh File Asli
+                                    </a>
+                                ");
                             })
                             ->columnSpanFull(),
                     ])->columns(2),
@@ -83,7 +87,7 @@ class DocumentResource extends Resource
                             ])
                             ->required()
                             ->default('pending')
-                            ->reactive(), // Membuat form bereaksi saat ini diubah
+                            ->reactive(),
                         
                         Textarea::make('admin_notes')
                             ->label('Catatan Admin')
@@ -92,11 +96,10 @@ class DocumentResource extends Resource
 
                         FileUpload::make('resolved_file_path')
                             ->label('Unggah File Hasil (Checklist/Resolved)')
-                            ->disk('r2') // Langsung upload ke R2
+                            ->disk('s3')
                             ->directory('admin-resolved-files')
                             ->visibility('private')
                             ->columnSpanFull()
-                            // Hanya tampilkan jika status 'checked'
                             ->visible(fn ($get) => $get('status') === 'checked'), 
                     ])->columns(1),
             ]);
@@ -129,9 +132,9 @@ class DocumentResource extends Resource
 
                 TextColumn::make('ip_address')
                     ->label('Alamat IP')
-                    ->toggleable(isToggledHiddenByDefault: true), // Sembunyikan default
+                    ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('admin.name') // Relasi dari Model Document
+                TextColumn::make('admin.name')
                     ->label('Dicek Oleh')
                     ->sortable(),
 
@@ -152,7 +155,7 @@ class DocumentResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                // Tables\Actions\DeleteBulkAction::make(), // Nonaktifkan hapus massal
+                // Tables\Actions\DeleteBulkAction::make(),
             ])
             ->defaultSort('created_at', 'desc');
     }
