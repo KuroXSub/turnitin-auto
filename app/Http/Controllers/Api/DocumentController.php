@@ -9,6 +9,7 @@ use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class DocumentController extends Controller
@@ -19,20 +20,27 @@ class DocumentController extends Controller
             'document' => 'required|file|mimes:pdf,doc,docx|max:20480',
         ]);
 
-        $file = $request->file('document');
         $ipAddress = $request->ip();
-        $token = $request->bearerToken();
-        $cacheKey = 'upload_token:' . $token;
+        Log::info("Menerima unggahan file dari IP: " . $ipAddress);
 
-        $tokenIp = Cache::get($cacheKey);
-        if ($tokenIp !== $ipAddress) {
+        $quota = Cache::decrement('daily_quota');
+        
+        if ($quota < 0) {
             Cache::increment('daily_quota');
-            Cache::forget($cacheKey);
-            return response()->json(['message' => 'IP address tidak cocok.'], 403);
+            Log::warning('Upload gagal: Kuota habis saat mencoba mengunggah. IP: ' . $ipAddress);
+            
+            Cache::forget('upload_token:' . $request->bearerToken());
+            
+            return response()->json(['message' => 'Upload gagal, kuota harian sudah habis.'], 429);
         }
+        
+        Log::info('Kuota berhasil diambil. Sisa kuota: ' . $quota);
 
+        $file = $request->file('document');
         $originalName = $file->getClientOriginalName();
-        $path = $file->store('user_uploads', 'r2');
+        
+        $path = $file->store('user_uploads', 's3');
+        Log::info('File disimpan di: ' . $path);
 
         $verificationCode = Str::upper(Str::random(10));
 
@@ -45,9 +53,10 @@ class DocumentController extends Controller
             'user_id' => null,
         ]);
 
-        Cache::forget($cacheKey);
+        Cache::forget('upload_token:' . $request->bearerToken());
 
         dispatch(new SendAdminNotificationJob($document));
+        Log::info('Notifikasi admin dikirim ke queue.');
 
         $ipSuccessKey = 'ip_success_count:' . $ipAddress;
         
