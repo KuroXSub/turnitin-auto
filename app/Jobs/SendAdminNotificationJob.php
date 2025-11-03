@@ -27,7 +27,7 @@ class SendAdminNotificationJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $adminEmail = env('ADMIN_EMAIL', 'admin@example.com');
+        $adminEmail = env('ADMIN_EMAIL', 'qurrotaayunliulinuha@gmail.com');
         
         if ($adminEmail) {
             Mail::to($adminEmail)->send(new AdminNewDocumentMail($this->document));
