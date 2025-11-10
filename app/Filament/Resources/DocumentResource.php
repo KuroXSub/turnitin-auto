@@ -99,6 +99,7 @@ class DocumentResource extends Resource
                             ->disk('s3')
                             ->directory('admin-resolved-files')
                             ->visibility('private')
+                            ->maxSize(20480)
                             ->columnSpanFull()
                             ->visible(fn ($get) => $get('status') === 'checked'), 
                     ])->columns(1),
