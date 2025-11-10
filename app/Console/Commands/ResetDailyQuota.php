@@ -26,7 +26,7 @@ class ResetDailyQuota extends Command
      */
     public function handle()
     {
-        $quota = (int) env('DAILY_UPLOAD_QUOTA', 50);
+        $quota = config('kurosapa.daily_quota', 50);
 
         Cache::put('daily_quota', $quota);
 
